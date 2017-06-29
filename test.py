@@ -4,12 +4,15 @@ import torch as th
 import torch.nn as nn
 from torch.autograd import Variable as V
 
-from lstm import LSTM, GalLSTM
+from lstm import LSTM, GalLSTM, MoonLSTM, SemeniutaLSTM
 
+"""
+TODO: 
+    * Find a way to ensure that LSTM and nn.LSTM are 100% identical.
+"""
 
 if __name__ == '__main__':
-    x = V(th.rand(1, 256))
-
+    x = V(th.rand(1, 1, 256))
     hiddens = (V(th.rand(1, 1, 256)), V(th.rand(1, 1, 256)))
     th.manual_seed(1234)
     ref = nn.LSTM(256, 256)
@@ -18,8 +21,8 @@ if __name__ == '__main__':
 
     mask = cus.mask
     for i in range(10):
-        label, g = ref(x.view(1, 1, -1), hiddens)
-        pred, h = cus(x.view(1, 1, -1), hiddens)
+        label, g = ref(x, hiddens)
+        pred, h = cus(x, hiddens)
         assert(th.equal(pred.data, label.data))
         assert(th.equal(g[0].data, h[0].data))
         assert(th.equal(g[1].data, h[1].data))
@@ -29,24 +32,24 @@ if __name__ == '__main__':
         mask = cus.mask
 
 
+    x = V(th.rand(1, 1, 256))
     hiddens = (V(th.rand(1, 1, 256)), V(th.rand(1, 1, 256)))
     th.manual_seed(1234)
-    ref = nn.LSTM(256, 256)
+    ref = LSTM(256, 256)
     th.manual_seed(1234)
-    cus = GalLSTM(256, 256, dropout=0.0)
+    # cus = GalLSTM(256, 256, dropout=0.0)
+    # cus = MoonLSTM(256, 256, dropout=0.0)
+    cus = SemeniutaLSTM(256, 256, dropout=0.0)
 
-    mask = cus.mask
+    # mask = cus.mask
     for i in range(10):
-        label, g = ref(x.view(1, 1, -1), hiddens)
-        print(label.sum())
-        pred, h = cus(x.view(1, 1, -1), hiddens)
-        print(mask.sum())
+        label, g = ref(x, hiddens)
+        pred, h = cus(x, hiddens)
         assert(th.equal(pred.data, label.data))
         assert(th.equal(g[0].data, h[0].data))
         assert(th.equal(g[1].data, h[1].data))
-        assert(th.equal(mask.data, cus.mask.data))
         hiddens = g
         x = pred
-        mask = cus.mask
+        # mask = cus.mask
 
     print('Test passed')
