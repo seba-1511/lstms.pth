@@ -47,7 +47,9 @@ if __name__ == '__main__':
             cus_res.append(cus_time)
 
         print('## ', name, ' Benchmark ')
+        print(' ')
         print('Inference timings on a single sequence of length', N_ITER,' with `dropout = ', DROPOUT, '`.')
+        print(' ')
         print('size   | nn.LSTM   | ', name, ' | Speedup')
         print('-------|-----------|-' + '-' * len(name) + '---|--------')
         for size, ref, cus in zip(SIZES, ref_res, cus_res):
