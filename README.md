@@ -63,7 +63,7 @@ This package provides a helper class, `MultiLayerLSTM`, which can be use to stac
 ```python
 lstm = MultiLayerLSTM(input_size=256, layer_type=LayerNormSemeniutaLSTM,
                       layer_sizes=(64, 64, 16), dropout=0.7, ln_preact=False)
-hiddens = lstm.create_hiddens()
+hiddens = lstm.create_hiddens(bsz=batch_size)
 x = Variable(th.rand(1, 1, 256))
 for _ in range(10):
     out, hiddens = lstm(x, hiddens)
