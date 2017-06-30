@@ -6,24 +6,28 @@ For now, they only support a sequence size of 1, and are ideal for RL use-cases.
 Besides that, they are a stripped-down version of PyTorch's RNN layers. 
 (no bidirectional, no num_layers, no batch_first)
 
-Base Models:
+Base Modules:
 
 * SlowLSTM: a (mostly useless) pedagogic example.
 * LayerNorm: Layer Normalization as in [Ba & al.](https://arxiv.org/pdf/1607.06450.pdf): *Layer Normalization*.
 
-Dropout Models:
+Dropout Modules:
 
 * LSTM: the original.
 * GalLSTM: using dropout as in [Gal & Ghahramami](http://papers.nips.cc/paper/6241-a-theoretically-grounded-application-of-dropout-in-recurrent-neural-networks.pdf): *A Theoretically Grounded Application of Dropout in RNNs*.
 * MoonLSTM: using dropout as in [Moon & al](https://www.stat.berkeley.edu/~tsmoon/files/Conference/asru2015.pdf): *RNNDrop: A Novel Dropout for RNNs in ASR*.
 * SemeniutaLSTM: using dropout as in [Semeniuta & al](https://arxiv.org/pdf/1603.05118.pdf): *Recurrent Dropout without Memory Loss*.
 
-Normalization + Dropout Models:
+Normalization + Dropout Modules:
 
 * LayerNormLSTM: Dropout + Layer Normalization.
 * LayerNormGalLSTM: Gal Dropout + Layer Normalization.
 * LayerNormMoonLSTM: Moon Dropout + Layer Normalization.
 * LayerNormSemeniutaLSTM: Semeniuta Dropout + Layer Normalization.
+
+Container Modules:
+
+* MultiLayerLSTM: helper class to build multiple layers LSTMs.
 
 **Convention:** If applicable, the activations are computed first, and **then** the nodes are droped. (dropout on the output, not the input, just like PyTorch)
 
@@ -38,22 +42,36 @@ You can find a good example of how to use the layers in [test/test_speed.py](./t
 All Dropout models share the same signature:
 
 ```python
-    LSTM(self, input_size, hidden_size, bias=True, dropout=0.0, dropout_method='pytorch')
+LSTM(self, input_size, hidden_size, bias=True, dropout=0.0, dropout_method='pytorch')
 ```
 
 All Normalization + Dropout models share the same signature:
 
 ```python
-
-    LayerNormLSTM(self, input_size, hidden_size, bias=True, dropout=0.0, 
-                 dropout_method='pytorch', ln_preact=True, learnable=True):
+LayerNormLSTM(self, input_size, hidden_size, bias=True, dropout=0.0, 
+             dropout_method='pytorch', ln_preact=True, learnable=True):
 ```
 
-And all models use the same `out, hidden = model.forward(x, hidden)`signature as the official PyTorch LSTM layers.
+And all models use the same `out, hidden = model.forward(x, hidden)`signature as the official PyTorch LSTM layers. They also all provide a `model.sample_mask()` method, which needs to be called in order to sample a new Dropout mask. (e.g, when processing a new sequence)
 
 **Note:** `LayerNorm` is not an LSTM layer, and thus uses `out = model.forward(x)`.
 
-## Capacity Results
+### Containers
+
+This package provides a helper class, `MultiLayerLSTM`, which can be use to stack multiple LSTMs together.
+
+```python
+lstm = MultiLayerLSTM(input_size=256, layer_type=LayerNormSemeniutaLSTM,
+                      layer_sizes=(64, 64, 16), dropout=0.7, ln_preact=False)
+hiddens = lstm.create_hiddens()
+x = Variable(th.rand(1, 1, 256))
+for _ in range(10):
+    x, hiddens = lstm(x, hiddens)
+```
+
+Note that `hiddens` doesn't match the PyTorch specification. It is the list of `(h_i, c_i)` for each LSTM layer. Instead, the `LSTM` layers in PyTorch return a single tuple of `(h_n, c_n)`, where `h_n` and `c_n` have sizes (num_layers * num_directions, batch, hidden_size).
+
+## Capacity Benchmarks
 
 Warning: This is an artificial memory benchmark, not necessarily representative of each method's capacity.
 
@@ -74,7 +92,7 @@ Info: dropout =  0.9 , SEQ_LEN =  10 , dataset size =  100  layer size =  256
  SemeniutaLSTM  | 3.762
 
 
-## Speed Results
+## Speed Benchmarks
 
 Available by running `make speed`.
 

@@ -116,8 +116,8 @@ class LSTM(nn.Module):
         self.hidden_size = hidden_size
         self.bias = bias
         self.dropout = dropout
-        self.i2h = nn.Linear(hidden_size, 4*input_size, bias=bias)
-        self.h2h = nn.Linear(hidden_size, 4*input_size, bias=bias)
+        self.i2h = nn.Linear(input_size, 4 * hidden_size, bias=bias)
+        self.h2h = nn.Linear(hidden_size, 4 * hidden_size, bias=bias)
         self.reset_parameters()
         assert(dropout_method.lower() in ['pytorch', 'gal', 'moon', 'semeniuta'])
         self.dropout_method = dropout_method
@@ -139,7 +139,9 @@ class LSTM(nn.Module):
         x = x.view(x.size(0), -1)
 
         # Linear mappings
-        preact = self.i2h(x) + self.h2h(h)
+        preact = self.i2h(x)
+        preact += self.h2h(h)
+        # preact = self.i2h(x) + self.h2h(h)
 
         # activations
         gates = preact[:, :3 * self.hidden_size].sigmoid()
