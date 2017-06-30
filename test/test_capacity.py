@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable as V
 from torch.optim import Adam, SGD
 
-from lstm import (SlowLSTM,
+from lstms import (SlowLSTM,
                   LSTM,
                   GalLSTM,
                   MoonLSTM,

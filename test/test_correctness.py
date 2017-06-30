@@ -4,7 +4,7 @@ import torch as th
 import torch.nn as nn
 from torch.autograd import Variable as V
 
-from lstm import SlowLSTM, LSTM, GalLSTM, MoonLSTM, SemeniutaLSTM
+from lstms import SlowLSTM, LSTM, GalLSTM, MoonLSTM, SemeniutaLSTM
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ from torch.autograd import Variable as V
 
 from time import time
 
-from lstm import (SlowLSTM,
+from lstms import (SlowLSTM,
                   LSTM,
                   GalLSTM,
                   MoonLSTM,

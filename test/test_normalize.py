@@ -3,7 +3,7 @@
 import torch as th
 from torch import Tensor as T
 from torch.autograd import Variable as V
-from lstm import LayerNorm, LSTM, LayerNormLSTM
+from lstms import LayerNorm, LSTM, LayerNormLSTM
 
 if __name__ == '__main__':
     th.manual_seed(1234)
