@@ -49,28 +49,30 @@ All Normalization + Dropout models share the same signature:
                  dropout_method='pytorch', ln_preact=True, learnable=True):
 ```
 
-And all models use the same `.forward(x, hidden)`signature as the official PyTorch LSTM layers.
+And all models use the same `out, hidden = model.forward(x, hidden)`signature as the official PyTorch LSTM layers.
 
-**Note:** `LayerNorm` is not an LSTM layer, and thus uses `.forward(x)`.
+**Note:** `LayerNorm` is not an LSTM layer, and thus uses `out = model.forward(x)`.
 
 ## Capacity Results
 
-Available by running `make capacity`
-
-Note: nn.LSTM does not have dropout in these experiments, as we are dealing with a single LSTM layer.
-
-Info: dropout =  0.9, SEQ_LEN =  10, dataset size =  100, layer size =  256.
-
 Warning: This is an artificial memory benchmark, not necessarily representative of each method's capacity.
+
+Note: nn.LSTM and SlowLSTM do not have dropout in these experiments.
+
+Info: dropout =  0.9 , SEQ_LEN =  10 , dataset size =  100  layer size =  256
  
-model          |         error
----------------|--------------
-nn.LSTM        | 3.515
-SlowLSTM       | 4.171
-LSTM           | 4.158
-GalLSTM        | 3.517
-MoonLSTM       | 4.443
-SemeniutaLSTM  | 3.773
+ model          |         error
+ ---------------|--------------
+ nn.LSTM        | 3.515
+ SlowLSTM       | 4.171
+ LSTM           | 4.160
+ GalLSTM        | 4.456
+ MoonLSTM       | 4.442
+ SemeniutaLSTM  | 3.762
+ GalLSTM        | 4.456
+ MoonLSTM       | 4.442
+ SemeniutaLSTM  | 3.762
+
 
 ## Speed Results
 
@@ -78,54 +80,92 @@ Available by running `make speed`.
 
 Warning: Inference timings only, and on a single sequence of length 1000  with `dropout =  0.5 `.
 
-###  SlowLSTM  Benchmark 
- 
- 
+##  SlowLSTM  Benchmark 
+
 size   | nn.LSTM   |  SlowLSTM  | Speedup
 -------|-----------|------------|--------
-128    | 0.757     | 0.745      | 1.017
-256    | 0.583     | 0.800      | 0.729
-512    | 0.872     | 1.099      | 0.793
-1024    | 3.658     | 3.969      | 0.922
-2048    | 10.077     | 11.628      | 0.867
- 
-###  LSTM  Benchmark 
- 
+128    | 0.628     | 0.666      | 0.943
+256    | 0.676     | 0.759      | 0.890
+512    | 0.709     | 1.026      | 0.690
+1024    | 2.364     | 2.867      | 0.824
+2048    | 6.161     | 8.261      | 0.746
+
+##  LSTM  Benchmark 
+
 size   | nn.LSTM   |  LSTM  | Speedup
 -------|-----------|--------|--------
-128    | 0.725     | 0.379  | 1.913
-256    | 0.615     | 0.511  | 1.202
-512    | 0.835     | 0.610  | 1.369
-1024    | 3.485     | 3.547  | 0.982
-2048    | 11.066     | 7.762  | 1.426
- 
-###  GalLSTM  Benchmark 
- 
+128    | 0.568     | 0.387  | 1.466
+256    | 0.668     | 0.419  | 1.594
+512    | 0.803     | 0.769  | 1.045
+1024    | 2.966     | 2.002  | 1.482
+2048    | 6.291     | 6.393  | 0.984
+
+##  GalLSTM  Benchmark 
+
 size   | nn.LSTM   |  GalLSTM  | Speedup
 -------|-----------|-----------|--------
-128    | 0.669     | 0.696     | 0.961
-256    | 0.579     | 0.652     | 0.887
-512    | 0.966     | 0.885     | 1.091
-1024    | 3.630     | 3.441     | 1.055
-2048    | 9.598     | 9.509     | 1.009
- 
-###  MoonLSTM  Benchmark 
- 
+128    | 0.557     | 0.488     | 1.142
+256    | 0.683     | 0.446     | 1.530
+512    | 0.966     | 0.548     | 1.763
+1024    | 2.524     | 2.587     | 0.975
+2048    | 6.618     | 6.099     | 1.085
+
+##  MoonLSTM  Benchmark 
+
 size   | nn.LSTM   |  MoonLSTM  | Speedup
 -------|-----------|------------|--------
-128    | 0.656     | 0.551      | 1.190
-256    | 0.652     | 0.589      | 1.108
-512    | 0.949     | 0.614      | 1.546
-1024    | 3.646     | 3.020      | 1.207
-2048    | 10.202     | 8.539      | 1.195
- 
-###  SemeniutaLSTM  Benchmark 
- 
+128    | 0.667     | 0.445      | 1.499
+256    | 0.818     | 0.535      | 1.530
+512    | 0.908     | 0.695      | 1.306
+1024    | 2.517     | 2.553      | 0.986
+2048    | 6.475     | 6.779      | 0.955
+
+##  SemeniutaLSTM  Benchmark 
+
 size   | nn.LSTM   |  SemeniutaLSTM  | Speedup
 -------|-----------|-----------------|--------
-128    | 0.580     | 0.375           | 1.548
-256    | 0.718     | 0.843           | 0.852
-512    | 0.859     | 0.574           | 1.496
-1024    | 4.041     | 3.372           | 1.198
-2048    | 9.587     | 8.668           | 1.106
+128    | 0.692     | 0.513           | 1.348
+256    | 0.685     | 0.697           | 0.983
+512    | 0.717     | 0.701           | 1.022
+1024    | 2.639     | 2.751           | 0.959
+2048    | 7.294     | 6.122           | 1.191
 
+##  LayerNormLSTM  Benchmark 
+
+size   | nn.LSTM   |  LayerNormLSTM  | Speedup
+-------|-----------|-----------------|--------
+128    | 0.646     | 1.656           | 0.390
+256    | 0.583     | 1.800           | 0.324
+512    | 0.770     | 1.989           | 0.387
+1024    | 2.623     | 3.844           | 0.682
+2048    | 6.573     | 9.592           | 0.685
+
+##  LayerNormGalLSTM  Benchmark 
+
+size   | nn.LSTM   |  LayerNormGalLSTM  | Speedup
+-------|-----------|--------------------|--------
+128    | 0.566     | 0.486              | 1.163
+256    | 0.592     | 0.350              | 1.693
+512    | 0.920     | 0.606              | 1.517
+1024    | 2.508     | 2.427              | 1.034
+2048    | 7.356     | 10.268              | 0.716
+
+##  LayerNormMoonLSTM  Benchmark 
+
+size   | nn.LSTM   |  LayerNormMoonLSTM  | Speedup
+-------|-----------|---------------------|--------
+128    | 0.507     | 0.389               | 1.305
+256    | 0.685     | 0.511               | 1.342
+512    | 0.762     | 0.685               | 1.111
+1024    | 2.661     | 2.261               | 1.177
+2048    | 8.904     | 9.710               | 0.917
+
+##  LayerNormSemeniutaLSTM  Benchmark 
+
+size   | nn.LSTM   |  LayerNormSemeniutaLSTM  | Speedup
+-------|-----------|--------------------------|--------
+128    | 0.492     | 0.388                    | 1.267
+256    | 0.583     | 0.360                    | 1.616
+512    | 0.760     | 0.578                    | 1.316
+1024    | 2.586     | 2.328                    | 1.111
+2048    | 6.970     | 10.725                    | 0.650

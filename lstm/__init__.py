@@ -2,3 +2,4 @@
 
 from .lstm import *
 from .normalize import *
+from .container import *
