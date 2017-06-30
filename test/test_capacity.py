@@ -40,11 +40,11 @@ if __name__ == '__main__':
         opt = SGD(lstm.parameters(), lr=LR, momentum=MOMENTUM)
         loss = F.smooth_l1_loss
 
-        # print('Creating dataset')
         inputs = [[th.rand(1, 1, SIZE) for l in range(SEQ_LEN)] for _ in range(DS_SIZE)]
         labels = [sum(s) for s in inputs]
 
         for epoch in range(NUM_EPOCHS):
+            print(' ')
             print('*'*20, ' Epoch ', epoch, ' ', '*'*20)
             total_error = 0.0
             error = 0.0
@@ -59,14 +59,14 @@ if __name__ == '__main__':
                     out, h = lstm(x, h)
                 error += loss(out, y)
                 if (1 + idx) % BSZ == 0:
-                    print('    Batch Error: ', error.data[0] / BSZ)
+                    # print('    Batch Error: ', error.data[0] / BSZ)
                     total_error += error.data[0]
                     opt.zero_grad()
                     error.backward()
                     opt.step()
                     error = 0.0
-            # print('Average Error: ', total_error / DS_SIZE)
-            # print(' ')
+            print('Average Error: ', total_error / DS_SIZE)
+            print(' ')
 
         total_error = 0.0
         for seq, y in zip(inputs, labels):
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     print('Note: nn.LSTM does not have dropout in these experiments, as we are dealing with a single LSTM layer.')
     print('Info: dropout = ', DROPOUT, ', SEQ_LEN = ', SEQ_LEN, ', dataset size = ', DS_SIZE, ' layer size = ', SIZE)
     print(' ')
-    print('model          |         score')
+    print('model          |         error')
     print('---------------|--------------')
     for name, score in results:
         print(name + ' '*(14-len(name)), '| %.3f' % (score, ))

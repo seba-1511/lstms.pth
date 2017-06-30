@@ -11,10 +11,10 @@ dev:
 test: correct speed capacity
 
 correct:
-	python test_correctness.py
+	python test/test_correctness.py
 
 speed: 
-	python test_speed.py
+	python test/test_speed.py
 
 capacity:
-	python test_capacity.py
+	python test/test_capacity.py

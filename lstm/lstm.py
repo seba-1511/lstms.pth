@@ -15,12 +15,6 @@ For now, they only support a batch-size of 1, and are ideal for RL use-cases.
 Besides that, they should be compatible with the other PyTorch RNN layers.
 """
 
-"""
-TODO:
-    * Benchmark which works best.
-"""
-
-
 
 class SlowLSTM(nn.Module):
 
@@ -171,11 +165,11 @@ class GalLSTM(nn.Module):
         self.mask = V(th.bernoulli(T(1, self.hidden_size).fill_(keep)))
 
     def forward(self, x, hidden):
+        out, hidden = self.lstm.forward(x, hidden)
         if self.dropout > 0.0:
             if self.training:
                 hidden[0].data.set_(th.mul(hidden[0], self.mask).data)
                 hidden[0].data *= 1.0/(1.0 - self.dropout)
-        out, hidden = self.lstm.forward(x, hidden)
         return out, hidden
 
 
