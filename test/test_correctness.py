@@ -11,9 +11,6 @@ if __name__ == '__main__':
     lstms = [
         (SlowLSTM, 'SlowLSTM'),
         (LSTM, 'LSTM'),
-        (GalLSTM, 'GalLSTM'),
-        (MoonLSTM, 'MoonLSTM'),
-        (SemeniutaLSTM, 'SemeniutaLSTM'),
     ]
     for lstm, name in lstms:
         th.manual_seed(1234)

@@ -6,7 +6,16 @@ import torch.nn.functional as F
 from torch.autograd import Variable as V
 from torch.optim import Adam, SGD
 
-from lstm import SlowLSTM, LSTM, GalLSTM, MoonLSTM, SemeniutaLSTM
+from lstm import (SlowLSTM,
+                  LSTM,
+                  GalLSTM,
+                  MoonLSTM,
+                  SemeniutaLSTM,
+                  LayerNormLSTM,
+                  LayerNormGalLSTM,
+                  LayerNormMoonLSTM,
+                  LayerNormSemeniutaLSTM,
+                  )
 
 """
 An artificial memory benchmark, not necessarily representative of each method's capacity.
@@ -31,6 +40,9 @@ if __name__ == '__main__':
         (GalLSTM, 'GalLSTM'),
         (MoonLSTM, 'MoonLSTM'),
         (SemeniutaLSTM, 'SemeniutaLSTM'),
+        (LayerNormGalLSTM, 'GalLSTM'),
+        (LayerNormMoonLSTM, 'MoonLSTM'),
+        (LayerNormSemeniutaLSTM, 'SemeniutaLSTM'),
     ]
     results = []
     for lstm, name in lstms:
@@ -76,7 +88,7 @@ if __name__ == '__main__':
                     x = V(x, volatile=True)
                     out, h = lstm(x, h)
                 total_error += loss(y, out).data[0]
-        # print('Error: ', total_error / DS_SIZE)
+        print('Error: ', total_error / DS_SIZE)
         results.append([name, total_error / DS_SIZE])
 
     print(' ')

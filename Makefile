@@ -6,7 +6,7 @@
 all: dev
 
 dev:
-	python test_correctness.py
+	python test/test_normalize.py
 
 test: correct speed capacity
 

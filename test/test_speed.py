@@ -6,7 +6,16 @@ from torch.autograd import Variable as V
 
 from time import time
 
-from lstm import SlowLSTM, LSTM, GalLSTM, MoonLSTM, SemeniutaLSTM
+from lstm import (SlowLSTM,
+                  LSTM,
+                  GalLSTM,
+                  MoonLSTM,
+                  SemeniutaLSTM,
+                  LayerNormLSTM,
+                  LayerNormGalLSTM,
+                  LayerNormMoonLSTM,
+                  LayerNormSemeniutaLSTM,
+                  )
 
 
 if __name__ == '__main__':
@@ -19,6 +28,10 @@ if __name__ == '__main__':
         (GalLSTM, 'GalLSTM'),
         (MoonLSTM, 'MoonLSTM'),
         (SemeniutaLSTM, 'SemeniutaLSTM'),
+        (LayerNormLSTM, 'LayerNormLSTM'),
+        (LayerNormGalLSTM, 'LayerNormGalLSTM'),
+        (LayerNormMoonLSTM, 'LayerNormMoonLSTM'),
+        (LayerNormSemeniutaLSTM, 'LayerNormSemeniutaLSTM'),
     ]
 
     for lstm, name in lstms:

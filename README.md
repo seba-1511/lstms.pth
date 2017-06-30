@@ -2,22 +2,56 @@
 
 Implementation of LSTM variants, in PyTorch. 
 
-For now, they only support a batch-size of 1, and are ideal for RL use-cases. 
-Besides that, they should be compatible with the other PyTorch RNN layers.
+For now, they only support a sequence size of 1, and are ideal for RL use-cases. 
+Besides that, they are a stripped-down version of PyTorch's RNN layers. 
+(no bidirectional, no num_layers, no batch_first)
 
-Models implemented:
+Base Models:
 
-* SlowLSTM: a pedagogic example.
+* SlowLSTM: a (mostly useless) pedagogic example.
+* LayerNorm: Layer Normalization as in [Ba & al.](https://arxiv.org/pdf/1607.06450.pdf): *Layer Normalization*.
+
+Dropout Models:
+
 * LSTM: the original.
 * GalLSTM: using dropout as in [Gal & Ghahramami](http://papers.nips.cc/paper/6241-a-theoretically-grounded-application-of-dropout-in-recurrent-neural-networks.pdf): *A Theoretically Grounded Application of Dropout in RNNs*.
 * MoonLSTM: using dropout as in [Moon & al](https://www.stat.berkeley.edu/~tsmoon/files/Conference/asru2015.pdf): *RNNDrop: A Novel Dropout for RNNs in ASR*.
 * SemeniutaLSTM: using dropout as in [Semeniuta & al](https://arxiv.org/pdf/1603.05118.pdf): *Recurrent Dropout without Memory Loss*.
 
-**Convention:** If applicable, the activations are computed first, and **then** the nodes are droped. (dropout on the output, not the input)
+Normalization + Dropout Models:
+
+* LayerNormLSTM: Dropout + Layer Normalization.
+* LayerNormGalLSTM: Gal Dropout + Layer Normalization.
+* LayerNormMoonLSTM: Moon Dropout + Layer Normalization.
+* LayerNormSemeniutaLSTM: Semeniuta Dropout + Layer Normalization.
+
+**Convention:** If applicable, the activations are computed first, and **then** the nodes are droped. (dropout on the output, not the input, just like PyTorch)
 
 ## Install
 
 `pip install -e .`
+
+## Usage
+
+You can find a good example of how to use the layers in [test/test_speed.py](./test/test_speed.py).
+
+All Dropout models share the same signature:
+
+```python
+    LSTM(self, input_size, hidden_size, bias=True, dropout=0.0, dropout_method='pytorch')
+```
+
+All Normalization + Dropout models share the same signature:
+
+```python
+
+    LayerNormLSTM(self, input_size, hidden_size, bias=True, dropout=0.0, 
+                 dropout_method='pytorch', ln_preact=True, learnable=True):
+```
+
+And all models use the same `.forward(x, hidden)`signature as the official PyTorch LSTM layers.
+
+**Note:** `LayerNorm` is not an LSTM layer, and thus uses `.forward(x)`.
 
 ## Capacity Results
 
