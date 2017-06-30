@@ -6,10 +6,6 @@ from torch.autograd import Variable as V
 
 from lstm import LSTM, GalLSTM, MoonLSTM, SemeniutaLSTM
 
-"""
-TODO: 
-    * Find a way to ensure that LSTM and nn.LSTM are 100% identical.
-"""
 
 if __name__ == '__main__':
     x = V(th.rand(1, 1, 256))

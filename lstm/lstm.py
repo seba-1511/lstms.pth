@@ -3,6 +3,7 @@
 import math
 import torch as th
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor as T
 from torch.nn import Parameter as P
 from torch.autograd import Variable as V
@@ -14,8 +15,18 @@ For now, they only support a batch-size of 1, and are ideal for RL use-cases.
 Besides that, they should be compatible with the other PyTorch RNN layers.
 """
 
+"""
+TODO:
+    * Find a way to ensure that LSTM and nn.LSTM are 100% identical.
+    * Benchmark which works best.
+    * Benchmark speed vs nn.LSTM
+    * Support .eval() and .train()
+    * Implement a faster, non-pedagogical LSTM
+"""
 
-class LSTM(nn.Module):
+
+
+class SlowLSTM(nn.Module):
 
     """
     A pedagogic implementation of Hochreiter & Schmidhuber:
@@ -24,7 +35,7 @@ class LSTM(nn.Module):
     """
 
     def __init__(self, input_size, hidden_size, bias=True, dropout=0.0):
-        super(LSTM, self).__init__()
+        super(SlowLSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
@@ -49,7 +60,7 @@ class LSTM(nn.Module):
             self.b_f = P(self.b_f)
             self.b_o = P(self.b_o)
             self.b_c = P(self.b_c)
-
+        self.training = True
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -79,10 +90,64 @@ class LSTM(nn.Module):
         o_t = o_t.view(o_t.size(0), 1, -1)
         h_t = h_t.view(h_t.size(0), 1, -1)
         c_t = c_t.view(c_t.size(0), 1, -1)
+        if self.dropout > 0.0:
+            o_t = F.dropout(o_t, p=self.dropout, training=self.training)
         return o_t, (h_t, c_t)
 
-    def reset(self):
+    def sample_mask(self):
         pass
+
+
+class LSTM(nn.Module):
+
+    """
+    An implementation of Hochreiter & Schmidhuber:
+    'Long-Short Term Memory'
+    http://www.bioinf.jku.at/publications/older/2604.pdf
+    """
+
+    def __init__(self, input_size, hidden_size, bias=True, dropout=0.0):
+        super(LSTM, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+        self.dropout = dropout
+        self.i2h = nn.Linear(hidden_size, 4*input_size, bias=bias)
+        self.h2h = nn.Linear(hidden_size, 4*input_size, bias=bias)
+        self.training = True
+        self.reset_parameters()
+
+    def sample_mask(self):
+        pass
+
+    def reset_parameters(self):
+        std = 1.0 / math.sqrt(self.hidden_size)
+        for w in self.parameters():
+            w.data.uniform_(-std, std)
+
+    def forward(self, x, hidden):
+        h, c = hidden
+        h = h.view(h.size(0), -1)
+        c = c.view(h.size(0), -1)
+        x = x.view(x.size(0), -1)
+        # Linear mappings
+        preact = self.i2h(x) + self.h2h(h)
+        # activations
+        gates = preact[:, :3 * self.hidden_size].sigmoid()
+        c_t = preact[:, 3 * self.hidden_size:].tanh()
+        i_t = gates[:, :self.hidden_size] 
+        f_t = gates[:, self.hidden_size:2 * self.hidden_size]
+        o_t = gates[:, -self.hidden_size:]
+        # cell computations
+        c_t = th.mul(c, f_t) + th.mul(i_t, c_t)
+        h_t = th.mul(o_t, c_t.tanh())
+        # Reshape for compatibility
+        o_t = o_t.view(o_t.size(0), 1, -1)
+        h_t = h_t.view(h_t.size(0), 1, -1)
+        c_t = c_t.view(c_t.size(0), 1, -1)
+        if self.dropout > 0.0:
+            o_t = F.dropout(o_t, p=self.dropout, training=self.training)
+        return o_t, (h_t, c_t)
 
 
 class GalLSTM(nn.Module):
@@ -93,7 +158,7 @@ class GalLSTM(nn.Module):
     http://papers.nips.cc/paper/6241-a-theoretically-grounded-application-of-dropout-in-recurrent-neural-networks.pdf
     """
 
-    def __init__(self, input_size, hidden_size, bias=True, dropout=0.5, lstm=None):
+    def __init__(self, input_size, hidden_size, bias=True, dropout=0.0, lstm=None):
         super(GalLSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -102,9 +167,9 @@ class GalLSTM(nn.Module):
             lstm = nn.LSTM(input_size, hidden_size, bias)
         self.lstm = lstm
         self.dropout = dropout
-        self.reset()
+        self.sample_mask()
 
-    def reset(self):
+    def sample_mask(self):
         keep = 1.0 - self.dropout
         self.mask = V(th.bernoulli(T(1, self.hidden_size).fill_(keep)))
 
@@ -121,33 +186,32 @@ class MoonLSTM(LSTM):
     'RNNDrop: A Novel Dropout for RNNs in ASR'
     https://www.stat.berkeley.edu/~tsmoon/files/Conference/asru2015.pdf
     """
-    def __init__(self, input_size, hidden_size, bias=True, dropout=0.5):
+    def __init__(self, input_size, hidden_size, bias=True, dropout=0.0):
         super(MoonLSTM, self).__init__(input_size, hidden_size, bias, dropout)
-        self.reset()
+        self.sample_mask()
 
-    def reset(self):
+    def sample_mask(self):
         keep = 1.0 - self.dropout
         self.mask = V(th.bernoulli(T(1, self.hidden_size).fill_(keep)))
 
     def forward(self, x, hidden):
         h, c = hidden
         h = h.view(h.size(0), -1)
-        c = c.view(c.size(0), -1)
+        c = c.view(h.size(0), -1)
         x = x.view(x.size(0), -1)
         # Linear mappings
-        i_t = th.mm(x, self.w_xi) + th.mm(h, self.w_hi) + self.b_i
-        f_t = th.mm(x, self.w_xf) + th.mm(h, self.w_hf) + self.b_f
-        o_t = th.mm(x, self.w_xo) + th.mm(h, self.w_ho) + self.b_o
+        preact = self.i2h(x) + self.h2h(h)
         # activations
-        i_t.sigmoid_()
-        f_t.sigmoid_()
-        o_t.sigmoid_()
+        gates = preact[:, :3 * self.hidden_size].sigmoid()
+        c_t = preact[:, 3 * self.hidden_size:].tanh()
+        i_t = gates[:, :self.hidden_size] 
+        f_t = gates[:, self.hidden_size:2 * self.hidden_size]
+        o_t = gates[:, -self.hidden_size:]
         # cell computations
-        c_t = th.mm(x, self.w_xc) + th.mm(h, self.w_hc) + self.b_c
-        c_t.tanh_()
         c_t = th.mul(c, f_t) + th.mul(i_t, c_t)
-        c_t = self.mask * c_t
-        h_t = th.mul(o_t, th.tanh(c_t))
+        if self.dropout > 0.0:
+            c_t = c_t * self.mask
+        h_t = th.mul(o_t, c_t.tanh())
         # Reshape for compatibility
         o_t = o_t.view(o_t.size(0), 1, -1)
         h_t = h_t.view(h_t.size(0), 1, -1)
@@ -163,42 +227,28 @@ class SemeniutaLSTM(LSTM):
     """
     def __init__(self, input_size, hidden_size, bias=True, dropout=0.5):
         super(SemeniutaLSTM, self).__init__(input_size, hidden_size, bias, dropout)
-        self.reset()
-
-    def reset(self):
-        keep = 1.0 - self.dropout
-        self.mask = V(th.bernoulli(T(1, self.hidden_size).fill_(keep)))
+        self.sample_mask()
 
     def forward(self, x, hidden):
         h, c = hidden
         h = h.view(h.size(0), -1)
-        c = c.view(c.size(0), -1)
+        c = c.view(h.size(0), -1)
         x = x.view(x.size(0), -1)
         # Linear mappings
-        i_t = th.mm(x, self.w_xi) + th.mm(h, self.w_hi) + self.b_i
-        f_t = th.mm(x, self.w_xf) + th.mm(h, self.w_hf) + self.b_f
-        o_t = th.mm(x, self.w_xo) + th.mm(h, self.w_ho) + self.b_o
+        preact = self.i2h(x) + self.h2h(h)
         # activations
-        i_t.sigmoid_()
-        f_t.sigmoid_()
-        o_t.sigmoid_()
+        gates = preact[:, :3 * self.hidden_size].sigmoid()
+        c_t = preact[:, 3 * self.hidden_size:].tanh()
+        i_t = gates[:, :self.hidden_size] 
+        f_t = gates[:, self.hidden_size:2 * self.hidden_size]
+        o_t = gates[:, -self.hidden_size:]
         # cell computations
-        c_t = th.mm(x, self.w_xc) + th.mm(h, self.w_hc) + self.b_c
-        c_t.tanh_()
-        c_t = self.mask * c_t
+        if self.dropout > 0.0:
+            c_t = F.dropout(c_t, p=self.dropout, training=self.training)
         c_t = th.mul(c, f_t) + th.mul(i_t, c_t)
-        h_t = th.mul(o_t, th.tanh(c_t))
+        h_t = th.mul(o_t, c_t.tanh())
         # Reshape for compatibility
         o_t = o_t.view(o_t.size(0), 1, -1)
         h_t = h_t.view(h_t.size(0), 1, -1)
         c_t = c_t.view(c_t.size(0), 1, -1)
         return o_t, (h_t, c_t)
-
-
-
-
-class NormalizedLSTM(LSTM):
-    """
-    Implementation of LSTM with Tensor Normalization.
-    """
-    pass
