@@ -12,6 +12,7 @@ from lstm import SlowLSTM, LSTM, GalLSTM, MoonLSTM, SemeniutaLSTM
 if __name__ == '__main__':
     N_ITER = 1000
     SIZES = [128, 256, 512, 1024, 2048]
+    DROPOUT = 0.5
     lstms = [
             (SlowLSTM, 'SlowLSTM'),
             (LSTM, 'LSTM'),
@@ -27,9 +28,9 @@ if __name__ == '__main__':
             x = V(th.rand(1, 1, size))
             hiddens = (V(th.rand(1, 1, size)), V(th.rand(1, 1, size)))
             th.manual_seed(1234)
-            ref = nn.LSTM(size, size, dropout=0.3)
+            ref = nn.LSTM(size, size, dropout=DROPOUT)
             th.manual_seed(1234)
-            cus = lstm(size, size, dropout=0.3)
+            cus = lstm(size, size, dropout=DROPOUT)
 
             out, h = x, hiddens
             ref_start = time()
@@ -46,6 +47,7 @@ if __name__ == '__main__':
             cus_res.append(cus_time)
 
         print('## ', name, ' Benchmark ')
+        print('Inference timings on a single sequence of length', N_ITER,' with `dropout = ', DROPOUT, '`.')
         print('size   | nn.LSTM   | ', name, ' | Speedup')
         print('-------|-----------|-' + '-' * len(name) + '---|--------')
         for size, ref, cus in zip(SIZES, ref_res, cus_res):
