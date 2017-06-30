@@ -1,4 +1,4 @@
-# lstm.pth
+# lstms.pth
 
 Implementation of LSTM variants, in PyTorch. 
 
