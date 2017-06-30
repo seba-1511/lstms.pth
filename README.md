@@ -9,11 +9,11 @@ Models implemented:
 
 * SlowLSTM: a pedagogic example.
 * LSTM: the original.
-* GalLSTM: using dropout as in [Gal & Ghahramami](http://papers.nips.cc/paper/6241-a-theoretically-grounded-application-of-dropout-in-recurrent-neural-networks.pdf): *A Theoretically Grounded Application of Dropout in Recurrent Neural Networks*.
+* GalLSTM: using dropout as in [Gal & Ghahramami](http://papers.nips.cc/paper/6241-a-theoretically-grounded-application-of-dropout-in-recurrent-neural-networks.pdf): *A Theoretically Grounded Application of Dropout in RNNs*.
 * MoonLSTM: using dropout as in [Moon & al](https://www.stat.berkeley.edu/~tsmoon/files/Conference/asru2015.pdf): *RNNDrop: A Novel Dropout for RNNs in ASR*.
 * SemeniutaLSTM: using dropout as in [Semeniuta & al](https://arxiv.org/pdf/1603.05118.pdf): *Recurrent Dropout without Memory Loss*.
 
-**Convention:** when using dropout, the activations are first computed, and **then** the nodes are droped. (dropout on the output, not the input)
+**Convention:** If applicable, the activations are computed first, and **then** the nodes are droped. (dropout on the output, not the input)
 
 ## Install
 
@@ -24,7 +24,9 @@ Models implemented:
 Available by running `make capacity`
 
 Note: nn.LSTM does not have dropout in these experiments, as we are dealing with a single LSTM layer.
+
 Info: dropout =  0.9, SEQ_LEN =  10, dataset size =  100, layer size =  256.
+
 Warning: This is an artificial memory benchmark, not necessarily representative of each method's capacity.
  
 model          |         error
@@ -38,11 +40,12 @@ SemeniutaLSTM  | 3.773
 
 ## Speed Results
 
-Available by running `make speed`
+Available by running `make speed`.
+
+Warning: Inference timings only, and on a single sequence of length 1000  with `dropout =  0.5 `.
 
 ###  SlowLSTM  Benchmark 
  
-Inference timings on a single sequence of length 1000  with `dropout =  0.5 `.
  
 size   | nn.LSTM   |  SlowLSTM  | Speedup
 -------|-----------|------------|--------
@@ -54,8 +57,6 @@ size   | nn.LSTM   |  SlowLSTM  | Speedup
  
 ###  LSTM  Benchmark 
  
-Inference timings on a single sequence of length 1000  with `dropout =  0.5 `.
- 
 size   | nn.LSTM   |  LSTM  | Speedup
 -------|-----------|--------|--------
 128    | 0.725     | 0.379  | 1.913
@@ -65,8 +66,6 @@ size   | nn.LSTM   |  LSTM  | Speedup
 2048    | 11.066     | 7.762  | 1.426
  
 ###  GalLSTM  Benchmark 
- 
-Inference timings on a single sequence of length 1000  with `dropout =  0.5 `.
  
 size   | nn.LSTM   |  GalLSTM  | Speedup
 -------|-----------|-----------|--------
@@ -78,8 +77,6 @@ size   | nn.LSTM   |  GalLSTM  | Speedup
  
 ###  MoonLSTM  Benchmark 
  
-Inference timings on a single sequence of length 1000  with `dropout =  0.5 `.
- 
 size   | nn.LSTM   |  MoonLSTM  | Speedup
 -------|-----------|------------|--------
 128    | 0.656     | 0.551      | 1.190
@@ -89,8 +86,6 @@ size   | nn.LSTM   |  MoonLSTM  | Speedup
 2048    | 10.202     | 8.539      | 1.195
  
 ###  SemeniutaLSTM  Benchmark 
- 
-Inference timings on a single sequence of length 1000  with `dropout =  0.5 `.
  
 size   | nn.LSTM   |  SemeniutaLSTM  | Speedup
 -------|-----------|-----------------|--------
