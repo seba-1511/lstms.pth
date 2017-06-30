@@ -2,7 +2,7 @@
 
 Implementation of LSTM variants, in PyTorch. 
 
-For now, they only support a sequence size of 1, and are ideal for RL use-cases. 
+For now, they only support a sequence size of 1, and meant for RL use-cases. 
 Besides that, they are a stripped-down version of PyTorch's RNN layers. 
 (no bidirectional, no num_layers, no batch_first)
 
