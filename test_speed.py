@@ -14,12 +14,12 @@ if __name__ == '__main__':
     SIZES = [128, 256, 512, 1024, 2048]
     DROPOUT = 0.5
     lstms = [
-            (SlowLSTM, 'SlowLSTM'),
-            (LSTM, 'LSTM'),
-            (GalLSTM, 'GalLSTM'),
-            (MoonLSTM, 'MoonLSTM'),
-            (SemeniutaLSTM, 'SemeniutaLSTM'),
-            ]
+        (SlowLSTM, 'SlowLSTM'),
+        (LSTM, 'LSTM'),
+        (GalLSTM, 'GalLSTM'),
+        (MoonLSTM, 'MoonLSTM'),
+        (SemeniutaLSTM, 'SemeniutaLSTM'),
+    ]
 
     for lstm, name in lstms:
         ref_res = []
@@ -48,11 +48,10 @@ if __name__ == '__main__':
 
         print('## ', name, ' Benchmark ')
         print(' ')
-        print('Inference timings on a single sequence of length', N_ITER,' with `dropout = ', DROPOUT, '`.')
+        print('Inference timings on a single sequence of length', N_ITER, ' with `dropout = ', DROPOUT, '`.')
         print(' ')
         print('size   | nn.LSTM   | ', name, ' | Speedup')
         print('-------|-----------|-' + '-' * len(name) + '---|--------')
         for size, ref, cus in zip(SIZES, ref_res, cus_res):
-            print(size, ('   | %.3f     | %.3f' + ' '*(len(name) - 4) + '  | %.3f') % (ref, cus, ref / cus))
+            print(size, ('   | %.3f     | %.3f' + ' ' * (len(name) - 4) + '  | %.3f') % (ref, cus, ref / cus))
         print(' ')
-

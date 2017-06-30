@@ -55,12 +55,16 @@ class SlowLSTM(nn.Module):
         self.b_f = T(hidden_size).fill_(0)
         self.b_o = T(hidden_size).fill_(0)
         self.b_c = T(hidden_size).fill_(0)
+
+        # Wrap biases as parameters if desired, else as variables without gradients
         if bias:
-            self.b_i = P(self.b_i)
-            self.b_f = P(self.b_f)
-            self.b_o = P(self.b_o)
-            self.b_c = P(self.b_c)
-        self.training = True
+            W = P
+        else:
+            W = V
+        self.b_i = W(self.b_i)
+        self.b_f = W(self.b_f)
+        self.b_o = W(self.b_o)
+        self.b_c = W(self.b_c)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -87,12 +91,11 @@ class SlowLSTM(nn.Module):
         c_t = th.mul(c, f_t) + th.mul(i_t, c_t)
         h_t = th.mul(o_t, th.tanh(c_t))
         # Reshape for compatibility
-        o_t = o_t.view(o_t.size(0), 1, -1)
         h_t = h_t.view(h_t.size(0), 1, -1)
         c_t = c_t.view(c_t.size(0), 1, -1)
         if self.dropout > 0.0:
-            o_t = F.dropout(o_t, p=self.dropout, training=self.training)
-        return o_t, (h_t, c_t)
+            F.dropout(h_t, p=self.dropout, training=self.training, inplace=True)
+        return h_t, (h_t, c_t)
 
     def sample_mask(self):
         pass
@@ -114,7 +117,6 @@ class LSTM(nn.Module):
         self.dropout = dropout
         self.i2h = nn.Linear(hidden_size, 4*input_size, bias=bias)
         self.h2h = nn.Linear(hidden_size, 4*input_size, bias=bias)
-        self.training = True
         self.reset_parameters()
 
     def sample_mask(self):
@@ -128,26 +130,25 @@ class LSTM(nn.Module):
     def forward(self, x, hidden):
         h, c = hidden
         h = h.view(h.size(0), -1)
-        c = c.view(h.size(0), -1)
+        c = c.view(c.size(0), -1)
         x = x.view(x.size(0), -1)
         # Linear mappings
         preact = self.i2h(x) + self.h2h(h)
         # activations
         gates = preact[:, :3 * self.hidden_size].sigmoid()
-        c_t = preact[:, 3 * self.hidden_size:].tanh()
+        g_t = preact[:, 3 * self.hidden_size:].tanh()
         i_t = gates[:, :self.hidden_size] 
         f_t = gates[:, self.hidden_size:2 * self.hidden_size]
         o_t = gates[:, -self.hidden_size:]
         # cell computations
-        c_t = th.mul(c, f_t) + th.mul(i_t, c_t)
+        c_t = th.mul(c, f_t) + th.mul(i_t, g_t)
         h_t = th.mul(o_t, c_t.tanh())
         # Reshape for compatibility
-        o_t = o_t.view(o_t.size(0), 1, -1)
         h_t = h_t.view(h_t.size(0), 1, -1)
         c_t = c_t.view(c_t.size(0), 1, -1)
         if self.dropout > 0.0:
-            o_t = F.dropout(o_t, p=self.dropout, training=self.training)
-        return o_t, (h_t, c_t)
+            F.dropout(h_t, p=self.dropout, training=self.training, inplace=True)
+        return h_t, (h_t, c_t)
 
 
 class GalLSTM(nn.Module):
@@ -164,7 +165,7 @@ class GalLSTM(nn.Module):
         self.hidden_size = hidden_size
         self.bias = bias
         if lstm is None:
-            lstm = nn.LSTM(input_size, hidden_size, bias)
+            lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, bias=bias)
         self.lstm = lstm
         self.dropout = dropout
         self.sample_mask()
@@ -174,8 +175,11 @@ class GalLSTM(nn.Module):
         self.mask = V(th.bernoulli(T(1, self.hidden_size).fill_(keep)))
 
     def forward(self, x, hidden):
-        hidden[0].data.set_(th.mul(hidden[0], self.mask).data)
-        out, hidden = self.lstm(x, hidden)
+        if self.dropout > 0.0:
+            if self.training:
+                hidden[0].data.set_(th.mul(hidden[0], self.mask).data)
+                hidden[0].data *= 1.0/(1.0 - self.dropout)
+        out, hidden = self.lstm.forward(x, hidden)
         return out, hidden
 
 
@@ -210,13 +214,14 @@ class MoonLSTM(LSTM):
         # cell computations
         c_t = th.mul(c, f_t) + th.mul(i_t, c_t)
         if self.dropout > 0.0:
-            c_t = c_t * self.mask
+            if self.training:
+                c_t.data.set_(th.mul(c_t, self.mask).data)
+                c_t.data *= 1.0/(1.0 - self.dropout)
         h_t = th.mul(o_t, c_t.tanh())
         # Reshape for compatibility
-        o_t = o_t.view(o_t.size(0), 1, -1)
         h_t = h_t.view(h_t.size(0), 1, -1)
         c_t = c_t.view(c_t.size(0), 1, -1)
-        return o_t, (h_t, c_t)
+        return h_t, (h_t, c_t)
 
 
 class SemeniutaLSTM(LSTM):
@@ -244,11 +249,10 @@ class SemeniutaLSTM(LSTM):
         o_t = gates[:, -self.hidden_size:]
         # cell computations
         if self.dropout > 0.0:
-            c_t = F.dropout(c_t, p=self.dropout, training=self.training)
+            F.dropout(c_t, p=self.dropout, training=self.training, inplace=True)
         c_t = th.mul(c, f_t) + th.mul(i_t, c_t)
         h_t = th.mul(o_t, c_t.tanh())
         # Reshape for compatibility
-        o_t = o_t.view(o_t.size(0), 1, -1)
         h_t = h_t.view(h_t.size(0), 1, -1)
         c_t = c_t.view(c_t.size(0), 1, -1)
-        return o_t, (h_t, c_t)
+        return h_t, (h_t, c_t)
