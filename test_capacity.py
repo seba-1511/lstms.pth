@@ -19,10 +19,11 @@ DROPOUT = 0.9
 LR = 0.01
 MOMENTUM = 0.9
 BSZ = 10
+SIZE = 256
 
 
 if __name__ == '__main__':
-    hiddens = (V(th.rand(1, 1, 256)), V(th.rand(1, 1, 256)))
+    hiddens = (V(th.rand(1, 1, SIZE)), V(th.rand(1, 1, SIZE)))
     lstms = [
         (nn.LSTM, 'nn.LSTM'),
         (SlowLSTM, 'SlowLSTM'),
@@ -35,12 +36,12 @@ if __name__ == '__main__':
     for lstm, name in lstms:
         print('Benching: ', name)
         th.manual_seed(1234)
-        lstm = lstm(256, 256, dropout=DROPOUT)
+        lstm = lstm(SIZE, SIZE, dropout=DROPOUT)
         opt = SGD(lstm.parameters(), lr=LR, momentum=MOMENTUM)
         loss = F.smooth_l1_loss
 
         # print('Creating dataset')
-        inputs = [[th.rand(1, 1, 256) for l in range(SEQ_LEN)] for _ in range(DS_SIZE)]
+        inputs = [[th.rand(1, 1, SIZE) for l in range(SEQ_LEN)] for _ in range(DS_SIZE)]
         labels = [sum(s) for s in inputs]
 
         for epoch in range(NUM_EPOCHS):
@@ -80,6 +81,8 @@ if __name__ == '__main__':
 
     print(' ')
     print('## Summary: ')
+    print('Note: nn.LSTM does not have dropout in these experiments, as we are dealing with a single LSTM layer.')
+    print('Info: dropout = ', DROPOUT, ', SEQ_LEN = ', SEQ_LEN, ', dataset size = ', DS_SIZE, ' layer size = ', SIZE)
     print(' ')
     print('model          |         score')
     print('---------------|--------------')
