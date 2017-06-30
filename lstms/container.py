@@ -44,13 +44,13 @@ class MultiLayerLSTM(nn.Module):
         for l in self.layers:
             l.reset_parameters()
 
-    def create_hiddens(self):
+    def create_hiddens(self, bsz=1):
         # Uses Xavier init here.
         hiddens = []
         for l in self.layers:
             std = math.sqrt(2.0 / (l.input_size + l.hidden_size))
-            hiddens.append([V(T(1, 1, l.hidden_size).normal_(0, std)),
-                            V(T(1, 1, l.hidden_size).normal_(0, std))])
+            hiddens.append([V(T(1, bsz, l.hidden_size).normal_(0, std)),
+                            V(T(1, bsz, l.hidden_size).normal_(0, std))])
         return hiddens
 
     def sample_mask(self):
@@ -60,6 +60,7 @@ class MultiLayerLSTM(nn.Module):
     def forward(self, x, hiddens):
         new_hiddens = []
         for l, h in zip(self.layers, hiddens):
+            print('asdf')
             x, new_h = l(x, h)
             new_hiddens.append(new_h)
         return x, new_hiddens

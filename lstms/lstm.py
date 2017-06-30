@@ -134,14 +134,12 @@ class LSTM(nn.Module):
     def forward(self, x, hidden):
         do_dropout = self.training and self.dropout > 0.0
         h, c = hidden
-        h = h.view(h.size(0), -1)
-        c = c.view(c.size(0), -1)
-        x = x.view(x.size(0), -1)
+        h = h.view(h.size(1), -1)
+        c = c.view(c.size(1), -1)
+        x = x.view(x.size(1), -1)
 
         # Linear mappings
-        preact = self.i2h(x)
-        preact += self.h2h(h)
-        # preact = self.i2h(x) + self.h2h(h)
+        preact = self.i2h(x) + self.h2h(h)
 
         # activations
         gates = preact[:, :3 * self.hidden_size].sigmoid()
@@ -170,8 +168,8 @@ class LSTM(nn.Module):
                     h_t.data.set_(th.mul(h_t, self.mask).data)
                     h_t.data *= 1.0/(1.0 - self.dropout)
 
-        h_t = h_t.view(h_t.size(0), 1, -1)
-        c_t = c_t.view(c_t.size(0), 1, -1)
+        h_t = h_t.view(1, h_t.size(0), -1)
+        c_t = c_t.view(1, c_t.size(0), -1)
         return h_t, (h_t, c_t)
 
 
@@ -241,13 +239,13 @@ class LayerNormLSTM(LSTM):
     def forward(self, x, hidden):
         do_dropout = self.training and self.dropout > 0.0
         h, c = hidden
-        h = h.view(h.size(0), -1)
-        c = c.view(c.size(0), -1)
-        x = x.view(x.size(0), -1)
+        h = h.view(h.size(1), -1)
+        c = c.view(c.size(1), -1)
+        x = x.view(x.size(1), -1)
 
         # Linear mappings
         i2h = self.i2h(x)
-        h2h = self.h2h(x)
+        h2h = self.h2h(h)
         if self.ln_preact:
             i2h = self.ln_i2h(i2h)
             h2h = self.ln_h2h(h2h)
@@ -281,8 +279,8 @@ class LayerNormLSTM(LSTM):
                     h_t.data.set_(th.mul(h_t, self.mask).data)
                     h_t.data *= 1.0/(1.0 - self.dropout)
 
-        h_t = h_t.view(h_t.size(0), 1, -1)
-        c_t = c_t.view(c_t.size(0), 1, -1)
+        h_t = h_t.view(1, h_t.size(0), -1)
+        c_t = c_t.view(1, c_t.size(0), -1)
         return h_t, (h_t, c_t)
 
 
