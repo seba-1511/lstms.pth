@@ -45,10 +45,10 @@ if __name__ == '__main__':
             cus_time = time() - cus_start
             cus_res.append(cus_time)
 
-        print('*'*20, name, ' Benchmark ', '*'*20)
+        print('## ', name, ' Benchmark ')
+        print('size   | nn.LSTM   | ', name, ' | Speedup')
+        print('-------|-----------|-' + '-' * len(name) + '---|--------')
         for size, ref, cus in zip(SIZES, ref_res, cus_res):
-            print(size, ' Reference Timing: ', ref)
-            print(size, ' ', name, ' Timing: ', cus)
-            print('Slow down: ', cus / ref)
+            print(size, ('   | %.3f     | %.3f' + ' '*(len(name) - 4) + '  | %.3f') % (ref, cus, ref / cus))
         print(' ')
 
