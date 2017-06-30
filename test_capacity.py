@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+
+import torch as th
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable as V
+from torch.optim import Adam, SGD
+
+from lstm import SlowLSTM, LSTM, GalLSTM, MoonLSTM, SemeniutaLSTM
+
+"""
+An artificial memory benchmark, not necessarily representative of each method's capacity.
+"""
+
+DS_SIZE = 100
+SEQ_LEN = 10
+NUM_EPOCHS = 10
+DROPOUT = 0.9
+LR = 0.01
+MOMENTUM = 0.9
+BSZ = 10
+
+
+if __name__ == '__main__':
+    hiddens = (V(th.rand(1, 1, 256)), V(th.rand(1, 1, 256)))
+    lstms = [
+        (nn.LSTM, 'nn.LSTM'),
+        (SlowLSTM, 'SlowLSTM'),
+        (LSTM, 'LSTM'),
+        (GalLSTM, 'GalLSTM'),
+        (MoonLSTM, 'MoonLSTM'),
+        (SemeniutaLSTM, 'SemeniutaLSTM'),
+    ]
+    results = []
+    for lstm, name in lstms:
+        print('Benching: ', name)
+        th.manual_seed(1234)
+        lstm = lstm(256, 256, dropout=DROPOUT)
+        opt = SGD(lstm.parameters(), lr=LR, momentum=MOMENTUM)
+        loss = F.smooth_l1_loss
+
+        # print('Creating dataset')
+        inputs = [[th.rand(1, 1, 256) for l in range(SEQ_LEN)] for _ in range(DS_SIZE)]
+        labels = [sum(s) for s in inputs]
+
+        for epoch in range(NUM_EPOCHS):
+            print('*'*20, ' Epoch ', epoch, ' ', '*'*20)
+            total_error = 0.0
+            error = 0.0
+            for idx, (seq, y) in enumerate(zip(inputs, labels)):
+                if hasattr(lstm, 'sample_mask'):
+                    lstm.sample_mask()
+                y = V(y)
+                h = hiddens
+                out = 0.0
+                for x in seq:
+                    x = V(x)
+                    out, h = lstm(x, h)
+                error += loss(out, y)
+                if (1 + idx) % BSZ == 0:
+                    print('    Batch Error: ', error.data[0] / BSZ)
+                    total_error += error.data[0]
+                    opt.zero_grad()
+                    error.backward()
+                    opt.step()
+                    error = 0.0
+            # print('Average Error: ', total_error / DS_SIZE)
+            # print(' ')
+
+        total_error = 0.0
+        for seq, y in zip(inputs, labels):
+                y = V(y, volatile=True)
+                h = hiddens
+                for x in seq:
+                    x = V(x, volatile=True)
+                    out, h = lstm(x, h)
+                total_error += loss(y, out).data[0]
+        # print('Error: ', total_error / DS_SIZE)
+        results.append([name, total_error / DS_SIZE])
+
+    print(' ')
+    print('## Summary: ')
+    print(' ')
+    print('model          |         score')
+    print('---------------|--------------')
+    for name, score in results:
+        print(name + ' '*(14-len(name)), '| %.3f' % (score, ))
+

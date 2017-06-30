@@ -17,11 +17,7 @@ Besides that, they should be compatible with the other PyTorch RNN layers.
 
 """
 TODO:
-    * Find a way to ensure that LSTM and nn.LSTM are 100% identical.
     * Benchmark which works best.
-    * Benchmark speed vs nn.LSTM
-    * Support .eval() and .train()
-    * Implement a faster, non-pedagogical LSTM
 """
 
 
@@ -249,7 +245,7 @@ class SemeniutaLSTM(LSTM):
         o_t = gates[:, -self.hidden_size:]
         # cell computations
         if self.dropout > 0.0:
-            F.dropout(c_t, p=self.dropout, training=self.training, inplace=True)
+            c_t = F.dropout(c_t, p=self.dropout, training=self.training)
         c_t = th.mul(c, f_t) + th.mul(i_t, c_t)
         h_t = th.mul(o_t, c_t.tanh())
         # Reshape for compatibility
