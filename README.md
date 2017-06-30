@@ -66,7 +66,7 @@ lstm = MultiLayerLSTM(input_size=256, layer_type=LayerNormSemeniutaLSTM,
 hiddens = lstm.create_hiddens()
 x = Variable(th.rand(1, 1, 256))
 for _ in range(10):
-    x, hiddens = lstm(x, hiddens)
+    out, hiddens = lstm(x, hiddens)
 ```
 
 Note that `hiddens` doesn't match the PyTorch specification. It is the list of `(h_i, c_i)` for each LSTM layer. Instead, the `LSTM` layers in PyTorch return a single tuple of `(h_n, c_n)`, where `h_n` and `c_n` have sizes (num_layers * num_directions, batch, hidden_size).
