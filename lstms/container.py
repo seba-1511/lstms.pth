@@ -32,7 +32,7 @@ class MultiLayerLSTM(nn.Module):
             prev_size = size
         if 'dropout' in kwargs:
             del kwargs['dropout']
-        layer = rnn(input_size=prev_size, hidden_size=size, dropout=0.0,
+        layer = rnn(input_size=prev_size, hidden_size=layer_sizes[-1], dropout=0.0,
                     *args, **kwargs)
         layers.append(layer)
         self.layers = layers
