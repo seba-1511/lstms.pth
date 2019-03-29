@@ -7,15 +7,15 @@ from torch.autograd import Variable as V
 from torch.optim import Adam, SGD
 
 from lstms import (SlowLSTM,
-                  LSTM,
-                  GalLSTM,
-                  MoonLSTM,
-                  SemeniutaLSTM,
-                  LayerNormLSTM,
-                  LayerNormGalLSTM,
-                  LayerNormMoonLSTM,
-                  LayerNormSemeniutaLSTM,
-                  )
+                   LSTM,
+                   GalLSTM,
+                   MoonLSTM,
+                   SemeniutaLSTM,
+                   LayerNormLSTM,
+                   LayerNormGalLSTM,
+                   LayerNormMoonLSTM,
+                   LayerNormSemeniutaLSTM,
+                   )
 
 """
 An artificial memory benchmark, not necessarily representative of each method's capacity.
@@ -72,7 +72,7 @@ if __name__ == '__main__':
                 error += loss(out, y)
                 if (1 + idx) % BSZ == 0:
                     # print('    Batch Error: ', error.data[0] / BSZ)
-                    total_error += error.data[0]
+                    total_error += error.item()
                     opt.zero_grad()
                     error.backward()
                     opt.step()
@@ -87,7 +87,7 @@ if __name__ == '__main__':
                 for x in seq:
                     x = V(x, volatile=True)
                     out, h = lstm(x, h)
-                total_error += loss(y, out).data[0]
+                total_error += loss(y, out).item()
         print('Error: ', total_error / DS_SIZE)
         results.append([name, total_error / DS_SIZE])
 
