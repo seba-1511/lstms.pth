@@ -1,18 +1,14 @@
 #!/usr/bin/env python
-
-import math
-import torch as th
-import torch.nn as nn
-import torch.nn.functional as F
-from torch import Tensor as T
-from torch.nn import Parameter as P
-from torch.autograd import Variable as V
-
 """
 Implementation of various normalization techniques. Also only works on instances
 where batch size = 1.
-
 """
+import math
+
+import torch as th
+import torch.nn as nn
+from torch.autograd import Variable
+from torch.nn import Parameter
 
 
 class LayerNorm(nn.Module):
@@ -26,14 +22,14 @@ class LayerNorm(nn.Module):
         super(LayerNorm, self).__init__()
         self.input_size = input_size
         self.learnable = learnable
-        self.alpha = T(1, input_size).fill_(0)
-        self.beta = T(1, input_size).fill_(0)
+        self.alpha = th.empty(1, input_size).fill_(0)
+        self.beta = th.empty(1, input_size).fill_(0)
         self.epsilon = epsilon
         # Wrap as parameters if necessary
         if learnable:
-            W = P
+            W = Parameter
         else:
-            W = V
+            W = Variable
         self.alpha = W(self.alpha)
         self.beta = W(self.beta)
         self.reset_parameters()
@@ -81,18 +77,19 @@ class BaLayerNorm(nn.Module):
     This implementation mimicks the original torch implementation at:
     https://github.com/ryankiros/layer-norm/blob/master/torch_modules/LayerNormalization.lua
     """
+
     def __init__(self, input_size, learnable=True, epsilon=1e-5):
         super(BaLayerNorm, self).__init__()
         self.input_size = input_size
         self.learnable = learnable
         self.epsilon = epsilon
-        self.alpha = T(1, input_size).fill_(0)
-        self.beta = T(1, input_size).fill_(0)
+        self.alpha = th.empty(1, input_size).fill_(0)
+        self.beta = th.empty(1, input_size).fill_(0)
         # Wrap as parameters if necessary
         if learnable:
-            W = P
+            W = Parameter
         else:
-            W = V
+            W = Variable
         self.alpha = W(self.alpha)
         self.beta = W(self.beta)
 
