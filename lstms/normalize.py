@@ -42,7 +42,7 @@ class LayerNorm(nn.Module):
     def forward(self, x):
         size = x.size()
         x = x.view(x.size(0), -1)
-        x = (x - th.mean(x, 1).expand_as(x)) / th.sqrt(th.var(x, 1).expand_as(x) + self.epsilon)
+        x = (x - th.mean(x, 1).unsqueeze(1)) / th.sqrt(th.var(x, 1).unsqueeze(1) + self.epsilon)
         if self.learnable:
             x = self.alpha.expand_as(x) * x + self.beta.expand_as(x)
         return x.view(size)
@@ -96,9 +96,9 @@ class BaLayerNorm(nn.Module):
     def forward(self, x):
         size = x.size()
         x = x.view(x.size(0), -1)
-        mean = th.mean(x, 1).expand_as(x)
+        mean = th.mean(x, 1).unsqueeze(1)
         center = x - mean
-        std = th.sqrt(th.mean(th.square(center), 1)).expand_as(x)
+        std = th.sqrt(th.mean(th.square(center), 1)).unsqueeze(1)
         output = center / (std + self.epsilon)
         if self.learnable:
             output = self.alpha * output + self.beta
