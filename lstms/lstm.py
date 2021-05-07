@@ -1,22 +1,20 @@
 #!/usr/bin/env python
-
-import math
-import torch as th
-import torch.nn as nn
-import torch.nn.functional as F
-from torch import Tensor as T
-from torch.nn import Parameter as P
-from torch.autograd import Variable as V
-
-from .normalize import LayerNorm
-
 """
 Implementation of LSTM variants.
 
-For now, they only support a sequence size of 1, and are ideal for RL use-cases. 
-Besides that, they are a stripped-down version of PyTorch's RNN layers. 
+For now, they only support a sequence size of 1, and are ideal for RL use-cases.
+Besides that, they are a stripped-down version of PyTorch's RNN layers.
 (no bidirectional, no num_layers, no batch_first)
 """
+import math
+from typing import Tuple
+
+import torch as th
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn import Parameter
+
+from .normalize import LayerNorm
 
 
 class SlowLSTM(nn.Module):
@@ -27,37 +25,34 @@ class SlowLSTM(nn.Module):
     http://www.bioinf.jku.at/publications/older/2604.pdf
     """
 
-    def __init__(self, input_size, hidden_size, bias=True, dropout=0.0):
+    def __init__(self, input_size: int, hidden_size: int, bias: bool = True, dropout: float = 0.0):
         super(SlowLSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
         self.dropout = dropout
         # input to hidden weights
-        self.w_xi = P(T(hidden_size, input_size))
-        self.w_xf = P(T(hidden_size, input_size))
-        self.w_xo = P(T(hidden_size, input_size))
-        self.w_xc = P(T(hidden_size, input_size))
+        self.w_xi = Parameter(th.empty(hidden_size, input_size))
+        self.w_xf = Parameter(th.empty(hidden_size, input_size))
+        self.w_xo = Parameter(th.empty(hidden_size, input_size))
+        self.w_xc = Parameter(th.empty(hidden_size, input_size))
         # hidden to hidden weights
-        self.w_hi = P(T(hidden_size, hidden_size))
-        self.w_hf = P(T(hidden_size, hidden_size))
-        self.w_ho = P(T(hidden_size, hidden_size))
-        self.w_hc = P(T(hidden_size, hidden_size))
+        self.w_hi = Parameter(th.empty(hidden_size, hidden_size))
+        self.w_hf = Parameter(th.empty(hidden_size, hidden_size))
+        self.w_ho = Parameter(th.empty(hidden_size, hidden_size))
+        self.w_hc = Parameter(th.empty(hidden_size, hidden_size))
         # bias terms
-        self.b_i = T(hidden_size).fill_(0)
-        self.b_f = T(hidden_size).fill_(0)
-        self.b_o = T(hidden_size).fill_(0)
-        self.b_c = T(hidden_size).fill_(0)
+        self.b_i = th.empty(hidden_size).fill_(0)
+        self.b_f = th.empty(hidden_size).fill_(0)
+        self.b_o = th.empty(hidden_size).fill_(0)
+        self.b_c = th.empty(hidden_size).fill_(0)
 
         # Wrap biases as parameters if desired, else as variables without gradients
         if bias:
-            W = P
-        else:
-            W = V
-        self.b_i = W(self.b_i)
-        self.b_f = W(self.b_f)
-        self.b_o = W(self.b_o)
-        self.b_c = W(self.b_c)
+            self.b_i = Parameter(self.b_i)
+            self.b_f = Parameter(self.b_f)
+            self.b_o = Parameter(self.b_o)
+            self.b_c = Parameter(self.b_c)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -65,7 +60,7 @@ class SlowLSTM(nn.Module):
         for w in self.parameters():
             w.data.uniform_(-std, std)
 
-    def forward(self, x, hidden):
+    def forward(self, x: th.Tensor, hidden: Tuple[th.Tensor, th.Tensor]) -> Tuple[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
         h, c = hidden
         h = h.view(h.size(0), -1)
         c = c.view(h.size(0), -1)
@@ -102,7 +97,7 @@ class LSTM(nn.Module):
     http://www.bioinf.jku.at/publications/older/2604.pdf
 
     Special args:
-    
+
     dropout_method: one of
             * pytorch: default dropout implementation
             * gal: uses GalLSTM's dropout
@@ -110,7 +105,9 @@ class LSTM(nn.Module):
             * semeniuta: uses SemeniutaLSTM's dropout
     """
 
-    def __init__(self, input_size, hidden_size, bias=True, dropout=0.0, dropout_method='pytorch'):
+    def __init__(
+        self, input_size: int, hidden_size: int, bias: bool = True, dropout: float = 0.0, dropout_method: str = "pytorch"
+    ):
         super(LSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -119,19 +116,19 @@ class LSTM(nn.Module):
         self.i2h = nn.Linear(input_size, 4 * hidden_size, bias=bias)
         self.h2h = nn.Linear(hidden_size, 4 * hidden_size, bias=bias)
         self.reset_parameters()
-        assert(dropout_method.lower() in ['pytorch', 'gal', 'moon', 'semeniuta'])
+        assert dropout_method.lower() in ["pytorch", "gal", "moon", "semeniuta"]
         self.dropout_method = dropout_method
 
     def sample_mask(self):
         keep = 1.0 - self.dropout
-        self.mask = V(th.bernoulli(T(1, self.hidden_size).fill_(keep)))
+        self.mask = th.bernoulli(th.empty(1, self.hidden_size).fill_(keep))
 
     def reset_parameters(self):
         std = 1.0 / math.sqrt(self.hidden_size)
         for w in self.parameters():
             w.data.uniform_(-std, std)
 
-    def forward(self, x, hidden):
+    def forward(self, x: th.Tensor, hidden: Tuple[th.Tensor, th.Tensor]) -> Tuple[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
         do_dropout = self.training and self.dropout > 0.0
         h, c = hidden
         h = h.view(h.size(1), -1)
@@ -142,31 +139,31 @@ class LSTM(nn.Module):
         preact = self.i2h(x) + self.h2h(h)
 
         # activations
-        gates = preact[:, :3 * self.hidden_size].sigmoid()
-        g_t = preact[:, 3 * self.hidden_size:].tanh()
-        i_t = gates[:, :self.hidden_size] 
-        f_t = gates[:, self.hidden_size:2 * self.hidden_size]
-        o_t = gates[:, -self.hidden_size:]
+        gates = preact[:, : 3 * self.hidden_size].sigmoid()
+        g_t = preact[:, 3 * self.hidden_size :].tanh()
+        i_t = gates[:, : self.hidden_size]
+        f_t = gates[:, self.hidden_size : 2 * self.hidden_size]
+        o_t = gates[:, -self.hidden_size :]
 
         # cell computations
-        if do_dropout and self.dropout_method == 'semeniuta':
+        if do_dropout and self.dropout_method == "semeniuta":
             g_t = F.dropout(g_t, p=self.dropout, training=self.training)
 
         c_t = th.mul(c, f_t) + th.mul(i_t, g_t)
 
-        if do_dropout and self.dropout_method == 'moon':
-                c_t.data.set_(th.mul(c_t, self.mask).data)
-                c_t.data *= 1.0/(1.0 - self.dropout)
+        if do_dropout and self.dropout_method == "moon":
+            c_t.data.set_(th.mul(c_t, self.mask).data)
+            c_t.data *= 1.0 / (1.0 - self.dropout)
 
         h_t = th.mul(o_t, c_t.tanh())
 
         # Reshape for compatibility
         if do_dropout:
-            if self.dropout_method == 'pytorch':
+            if self.dropout_method == "pytorch":
                 F.dropout(h_t, p=self.dropout, training=self.training, inplace=True)
-            if self.dropout_method == 'gal':
-                    h_t.data.set_(th.mul(h_t, self.mask).data)
-                    h_t.data *= 1.0/(1.0 - self.dropout)
+            if self.dropout_method == "gal":
+                h_t.data.set_(th.mul(h_t, self.mask).data)
+                h_t.data *= 1.0 / (1.0 - self.dropout)
 
         h_t = h_t.view(1, h_t.size(0), -1)
         c_t = c_t.view(1, c_t.size(0), -1)
@@ -183,7 +180,7 @@ class GalLSTM(LSTM):
 
     def __init__(self, *args, **kwargs):
         super(GalLSTM, self).__init__(*args, **kwargs)
-        self.dropout_method = 'gal'
+        self.dropout_method = "gal"
         self.sample_mask()
 
 
@@ -194,9 +191,10 @@ class MoonLSTM(LSTM):
     'RNNDrop: A Novel Dropout for RNNs in ASR'
     https://www.stat.berkeley.edu/~tsmoon/files/Conference/asru2015.pdf
     """
+
     def __init__(self, *args, **kwargs):
         super(MoonLSTM, self).__init__(*args, **kwargs)
-        self.dropout_method = 'moon'
+        self.dropout_method = "moon"
         self.sample_mask()
 
 
@@ -206,9 +204,10 @@ class SemeniutaLSTM(LSTM):
     'Recurrent Dropout without Memory Loss'
     https://arxiv.org/pdf/1603.05118.pdf
     """
+
     def __init__(self, *args, **kwargs):
         super(SemeniutaLSTM, self).__init__(*args, **kwargs)
-        self.dropout_method = 'semeniuta'
+        self.dropout_method = "semeniuta"
 
 
 class LayerNormLSTM(LSTM):
@@ -223,20 +222,26 @@ class LayerNormLSTM(LSTM):
         learnable: whether the LN alpha & gamma should be used.
     """
 
-    def __init__(self, input_size, hidden_size, bias=True, dropout=0.0, 
-                 dropout_method='pytorch', ln_preact=True, learnable=True):
-        super(LayerNormLSTM, self).__init__(input_size=input_size, 
-                                            hidden_size=hidden_size, 
-                                            bias=bias,
-                                            dropout=dropout,
-                                            dropout_method=dropout_method)
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        bias: bool = True,
+        dropout: float = 0.0,
+        dropout_method: str = "pytorch",
+        ln_preact: bool = True,
+        learnable: bool = True,
+    ):
+        super(LayerNormLSTM, self).__init__(
+            input_size=input_size, hidden_size=hidden_size, bias=bias, dropout=dropout, dropout_method=dropout_method
+        )
         if ln_preact:
-            self.ln_i2h = LayerNorm(4*hidden_size, learnable=learnable)
-            self.ln_h2h = LayerNorm(4*hidden_size, learnable=learnable)
+            self.ln_i2h = LayerNorm(4 * hidden_size, learnable=learnable)
+            self.ln_h2h = LayerNorm(4 * hidden_size, learnable=learnable)
         self.ln_preact = ln_preact
         self.ln_cell = LayerNorm(hidden_size, learnable=learnable)
 
-    def forward(self, x, hidden):
+    def forward(self, x: th.Tensor, hidden: Tuple[th.Tensor, th.Tensor]) -> Tuple[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
         do_dropout = self.training and self.dropout > 0.0
         h, c = hidden
         h = h.view(h.size(1), -1)
@@ -252,66 +257,68 @@ class LayerNormLSTM(LSTM):
         preact = i2h + h2h
 
         # activations
-        gates = preact[:, :3 * self.hidden_size].sigmoid()
-        g_t = preact[:, 3 * self.hidden_size:].tanh()
-        i_t = gates[:, :self.hidden_size] 
-        f_t = gates[:, self.hidden_size:2 * self.hidden_size]
-        o_t = gates[:, -self.hidden_size:]
+        gates = preact[:, : 3 * self.hidden_size].sigmoid()
+        g_t = preact[:, 3 * self.hidden_size :].tanh()
+        i_t = gates[:, : self.hidden_size]
+        f_t = gates[:, self.hidden_size : 2 * self.hidden_size]
+        o_t = gates[:, -self.hidden_size :]
 
         # cell computations
-        if do_dropout and self.dropout_method == 'semeniuta':
+        if do_dropout and self.dropout_method == "semeniuta":
             g_t = F.dropout(g_t, p=self.dropout, training=self.training)
 
         c_t = th.mul(c, f_t) + th.mul(i_t, g_t)
 
-        if do_dropout and self.dropout_method == 'moon':
-                c_t.data.set_(th.mul(c_t, self.mask).data)
-                c_t.data *= 1.0/(1.0 - self.dropout)
+        if do_dropout and self.dropout_method == "moon":
+            c_t.data.set_(th.mul(c_t, self.mask).data)
+            c_t.data *= 1.0 / (1.0 - self.dropout)
 
         c_t = self.ln_cell(c_t)
         h_t = th.mul(o_t, c_t.tanh())
 
         # Reshape for compatibility
         if do_dropout:
-            if self.dropout_method == 'pytorch':
+            if self.dropout_method == "pytorch":
                 F.dropout(h_t, p=self.dropout, training=self.training, inplace=True)
-            if self.dropout_method == 'gal':
-                    h_t.data.set_(th.mul(h_t, self.mask).data)
-                    h_t.data *= 1.0/(1.0 - self.dropout)
+            if self.dropout_method == "gal":
+                h_t.data.set_(th.mul(h_t, self.mask).data)
+                h_t.data *= 1.0 / (1.0 - self.dropout)
 
         h_t = h_t.view(1, h_t.size(0), -1)
         c_t = c_t.view(1, c_t.size(0), -1)
         return h_t, (h_t, c_t)
 
 
-class LayerNormGalLSTM(LSTM):
+class LayerNormGalLSTM(LayerNormLSTM):
 
     """
     Mixes GalLSTM's Dropout with Layer Normalization
     """
+
     def __init__(self, *args, **kwargs):
         super(LayerNormGalLSTM, self).__init__(*args, **kwargs)
-        self.dropout_method = 'gal'
+        self.dropout_method = "gal"
         self.sample_mask()
 
 
-class LayerNormMoonLSTM(LSTM):
+class LayerNormMoonLSTM(LayerNormLSTM):
 
     """
     Mixes MoonLSTM's Dropout with Layer Normalization
     """
+
     def __init__(self, *args, **kwargs):
         super(LayerNormMoonLSTM, self).__init__(*args, **kwargs)
-        self.dropout_method = 'moon'
+        self.dropout_method = "moon"
         self.sample_mask()
 
 
-class LayerNormSemeniutaLSTM(LSTM):
+class LayerNormSemeniutaLSTM(LayerNormLSTM):
 
     """
     Mixes SemeniutaLSTM's Dropout with Layer Normalization
     """
+
     def __init__(self, *args, **kwargs):
         super(LayerNormSemeniutaLSTM, self).__init__(*args, **kwargs)
-        self.dropout_method = 'semeniuta'
-
+        self.dropout_method = "semeniuta"
