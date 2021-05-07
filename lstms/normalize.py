@@ -4,10 +4,10 @@ Implementation of various normalization techniques. Also only works on instances
 where batch size = 1.
 """
 import math
+from typing import Iterable
 
 import torch as th
 import torch.nn as nn
-from torch.autograd import Variable
 from torch.nn import Parameter
 
 
@@ -18,7 +18,7 @@ class LayerNorm(nn.Module):
     https://arxiv.org/pdf/1607.06450.pdf
     """
 
-    def __init__(self, input_size, learnable=True, epsilon=1e-6):
+    def __init__(self, input_size: int, learnable: bool = True, epsilon: float = 1e-6):
         super(LayerNorm, self).__init__()
         self.input_size = input_size
         self.learnable = learnable
@@ -27,11 +27,8 @@ class LayerNorm(nn.Module):
         self.epsilon = epsilon
         # Wrap as parameters if necessary
         if learnable:
-            W = Parameter
-        else:
-            W = Variable
-        self.alpha = W(self.alpha)
-        self.beta = W(self.beta)
+            self.alpha = Parameter(self.alpha)
+            self.beta = Parameter(self.beta)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -39,7 +36,7 @@ class LayerNorm(nn.Module):
         for w in self.parameters():
             w.data.uniform_(-std, std)
 
-    def forward(self, x):
+    def forward(self, x: th.Tensor) -> th.Tensor:
         size = x.size()
         x = x.view(x.size(0), -1)
         x = (x - th.mean(x, 1).unsqueeze(1)) / th.sqrt(th.var(x, 1).unsqueeze(1) + self.epsilon)
@@ -55,13 +52,13 @@ class BradburyLayerNorm(nn.Module):
     https://github.com/pytorch/pytorch/issues/1959#issuecomment-312364139
     """
 
-    def __init__(self, features, eps=1e-6):
+    def __init__(self, features: Iterable[int], eps: float = 1e-6):
         super(BradburyLayerNorm, self).__init__()
         self.gamma = nn.Parameter(th.ones(features))
         self.beta = nn.Parameter(th.zeros(features))
         self.eps = eps
 
-    def forward(self, x):
+    def forward(self, x: th.Tensor) -> th.Tensor:
         mean = x.mean(-1, keepdim=True)
         std = x.std(-1, keepdim=True)
         return self.gamma * (x - mean) / (std + self.eps) + self.beta
@@ -78,7 +75,7 @@ class BaLayerNorm(nn.Module):
     https://github.com/ryankiros/layer-norm/blob/master/torch_modules/LayerNormalization.lua
     """
 
-    def __init__(self, input_size, learnable=True, epsilon=1e-5):
+    def __init__(self, input_size: int, learnable: bool = True, epsilon: float = 1e-5):
         super(BaLayerNorm, self).__init__()
         self.input_size = input_size
         self.learnable = learnable
@@ -87,13 +84,10 @@ class BaLayerNorm(nn.Module):
         self.beta = th.empty(1, input_size).fill_(0)
         # Wrap as parameters if necessary
         if learnable:
-            W = Parameter
-        else:
-            W = Variable
-        self.alpha = W(self.alpha)
-        self.beta = W(self.beta)
+            self.alpha = Parameter(self.alpha)
+            self.beta = Parameter(self.beta)
 
-    def forward(self, x):
+    def forward(self, x: th.Tensor) -> th.Tensor:
         size = x.size()
         x = x.view(x.size(0), -1)
         mean = th.mean(x, 1).unsqueeze(1)

@@ -7,11 +7,11 @@ Besides that, they are a stripped-down version of PyTorch's RNN layers.
 (no bidirectional, no num_layers, no batch_first)
 """
 import math
+from typing import Tuple
 
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 from torch.nn import Parameter
 
 from .normalize import LayerNorm
@@ -25,7 +25,7 @@ class SlowLSTM(nn.Module):
     http://www.bioinf.jku.at/publications/older/2604.pdf
     """
 
-    def __init__(self, input_size, hidden_size, bias=True, dropout=0.0):
+    def __init__(self, input_size: int, hidden_size: int, bias: bool = True, dropout: float = 0.0):
         super(SlowLSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -49,13 +49,10 @@ class SlowLSTM(nn.Module):
 
         # Wrap biases as parameters if desired, else as variables without gradients
         if bias:
-            W = Parameter
-        else:
-            W = Variable
-        self.b_i = W(self.b_i)
-        self.b_f = W(self.b_f)
-        self.b_o = W(self.b_o)
-        self.b_c = W(self.b_c)
+            self.b_i = Parameter(self.b_i)
+            self.b_f = Parameter(self.b_f)
+            self.b_o = Parameter(self.b_o)
+            self.b_c = Parameter(self.b_c)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -63,7 +60,7 @@ class SlowLSTM(nn.Module):
         for w in self.parameters():
             w.data.uniform_(-std, std)
 
-    def forward(self, x, hidden):
+    def forward(self, x: th.Tensor, hidden: Tuple[th.Tensor, th.Tensor]) -> Tuple[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
         h, c = hidden
         h = h.view(h.size(0), -1)
         c = c.view(h.size(0), -1)
@@ -108,7 +105,9 @@ class LSTM(nn.Module):
             * semeniuta: uses SemeniutaLSTM's dropout
     """
 
-    def __init__(self, input_size, hidden_size, bias=True, dropout=0.0, dropout_method="pytorch"):
+    def __init__(
+        self, input_size: int, hidden_size: int, bias: bool = True, dropout: float = 0.0, dropout_method: str = "pytorch"
+    ):
         super(LSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -122,14 +121,14 @@ class LSTM(nn.Module):
 
     def sample_mask(self):
         keep = 1.0 - self.dropout
-        self.mask = Variable(th.bernoulli(th.empty(1, self.hidden_size).fill_(keep)))
+        self.mask = th.bernoulli(th.empty(1, self.hidden_size).fill_(keep))
 
     def reset_parameters(self):
         std = 1.0 / math.sqrt(self.hidden_size)
         for w in self.parameters():
             w.data.uniform_(-std, std)
 
-    def forward(self, x, hidden):
+    def forward(self, x: th.Tensor, hidden: Tuple[th.Tensor, th.Tensor]) -> Tuple[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
         do_dropout = self.training and self.dropout > 0.0
         h, c = hidden
         h = h.view(h.size(1), -1)
@@ -224,7 +223,14 @@ class LayerNormLSTM(LSTM):
     """
 
     def __init__(
-        self, input_size, hidden_size, bias=True, dropout=0.0, dropout_method="pytorch", ln_preact=True, learnable=True
+        self,
+        input_size: int,
+        hidden_size: int,
+        bias: bool = True,
+        dropout: float = 0.0,
+        dropout_method: str = "pytorch",
+        ln_preact: bool = True,
+        learnable: bool = True,
     ):
         super(LayerNormLSTM, self).__init__(
             input_size=input_size, hidden_size=hidden_size, bias=bias, dropout=dropout, dropout_method=dropout_method
@@ -235,7 +241,7 @@ class LayerNormLSTM(LSTM):
         self.ln_preact = ln_preact
         self.ln_cell = LayerNorm(hidden_size, learnable=learnable)
 
-    def forward(self, x, hidden):
+    def forward(self, x: th.Tensor, hidden: Tuple[th.Tensor, th.Tensor]) -> Tuple[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
         do_dropout = self.training and self.dropout > 0.0
         h, c = hidden
         h = h.view(h.size(1), -1)
